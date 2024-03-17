@@ -1,0 +1,66 @@
+pipeline {
+    agent any
+        environment {
+            //SCANNER_HOME= tool 'sonar-scanner'
+            def scannerHome = tool 'sonar-scanner';
+            ARTIFACT_NAME = 'react-user-agent'
+             DOCKER_IMAGE = "rupeshrk004/react-user-agent"
+            IMAGE_TAG = "${env.BUILD_NUMBER}"
+        }
+    stages {
+        stage('CheckOut') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Rupeshkr004/react-user-agent.git'
+            }
+        }
+        stage('SonarQube Analysis'){
+            steps{
+                
+                withSonarQubeEnv('sonar') {
+                     sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=react-user-agent -Dsonar.projectName=react-user-agent"
+                     echo 'Queality scan success.'
+                    
+                }
+            }
+        }
+        stage('Build Artifact'){
+            steps{
+                //sh 'chmod 777 /var/lib/jenkins/workspace/password-Generator/'
+                    sh 'npm install'
+                    //sh 'chown -R jenkins:jenkins ./build/'
+                    //sh 'chown -R jenkins:jenkins ./node_modules/.cache/.eslintcache'
+                    // Build the project 
+                    sh 'npm run build'
+                    // Create a zip artifact containing the built files
+                   // zip(zipFile: "${env.ARTIFACT_NAME}${env.BUILD_NUMBER}.zip", archive: false, dir: '.') 
+                echo 'build success'
+            }
+        }
+        stage('Build Docker Image'){
+            steps{
+                    sh 'docker build -t rupeshrk004/react-user-agent:${IMAGE_TAG} .'
+                    echo "Image Build Success!"
+            }
+        }
+        stage('Push-DockerHub'){
+            steps{
+                script{
+                    withDockerRegistry(credentialsId: 'dockerPasswords') {
+                        sh 'docker push rupeshrk004/react-user-agent:${IMAGE_TAG}'
+                        echo 'image push to dockerHub successfully'
+                        
+                    }
+                }    
+                
+            }
+        }
+        stage('Deploy to Kubernetes') {
+            steps {
+                    sh "sed -i 's|{{IMAGE_TAG}}|${IMAGE_TAG}|g' deployment.yml"
+    
+                    sh "kubectl apply -f deployment.yml"
+                    sh "kubectl apply -f loadbalancer-service.yml"
+            }
+        }
+    }
+}
