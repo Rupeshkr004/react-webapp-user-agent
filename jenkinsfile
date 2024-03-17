@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('CheckOut') {
             steps {
-                git branch: 'main', url: 'https://github.com/Rupeshkr004/react-user-agent.git'
+                git branch: 'main', url: 'https://github.com/Rupeshkr004/react-webapp-user-agent.git'
             }
         }
         stage('SonarQube Analysis'){
@@ -25,10 +25,7 @@ pipeline {
         }
         stage('Build Artifact'){
             steps{
-                //sh 'chmod 777 /var/lib/jenkins/workspace/password-Generator/'
                     sh 'npm install'
-                    //sh 'chown -R jenkins:jenkins ./build/'
-                    //sh 'chown -R jenkins:jenkins ./node_modules/.cache/.eslintcache'
                     // Build the project 
                     sh 'npm run build'
                     // Create a zip artifact containing the built files
@@ -57,7 +54,6 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                     sh "sed -i 's|{{IMAGE_TAG}}|${IMAGE_TAG}|g' deployment.yml"
-    
                     sh "kubectl apply -f deployment.yml"
                     sh "kubectl apply -f loadbalancer-service.yml"
             }
